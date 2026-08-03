@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Dutch Forest Change Detection · INFOMSSML 2026 · Group 4</title>
+<meta name="description" content="Tracking deforestation in Utrecht & Gelderland using NDVI temporal profiles from Landsat imagery, 2013–2025.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12160f;
+    --bark:#241d17;
+    --canopy:#3f6b4a;
+    --ndvi-low:#c9a25f;
+    --ndvi-mid:#8fae52;
+    --ndvi-high:#2f6b3f;
+    --paper:#ece5d3;
+    --paper-dim:#b9b09a;
+    --line: rgba(236,229,211,0.14);
+    --line-strong: rgba(236,229,211,0.26);
+    --maxw: 1080px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:16px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+  ::selection{background:var(--ndvi-mid); color:var(--ink);}
+
+  /* NDVI scroll progress */
+  #ndvi-progress{
+    position:fixed; top:0; left:0; height:3px; width:100%;
+    background:var(--line); z-index:1000;
+  }
+  #ndvi-progress > div{
+    height:100%; width:0%;
+    background:linear-gradient(90deg, var(--ndvi-low), var(--ndvi-mid) 55%, var(--ndvi-high));
+    transition:width .08s linear;
+  }
+
+  header.site-nav{
+    position:sticky; top:3px; z-index:900;
+    backdrop-filter: blur(10px);
+    background:rgba(18,22,15,0.82);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-inner{
+    max-width:var(--maxw); margin:0 auto; padding:16px 24px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .nav-mark{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; letter-spacing:.06em;
+    color:var(--paper-dim);
+  }
+  .nav-mark b{color:var(--paper); font-weight:500;}
+  nav.nav-links{display:flex; gap:28px;}
+  nav.nav-links a{
+    font-size:13px; text-transform:uppercase; letter-spacing:.08em;
+    text-decoration:none; color:var(--paper-dim);
+    padding-bottom:2px; border-bottom:1px solid transparent;
+    transition:color .2s ease, border-color .2s ease;
+  }
+  nav.nav-links a:hover, nav.nav-links a:focus-visible{
+    color:var(--paper); border-color:var(--ndvi-mid);
+  }
+  .nav-toggle{display:none; background:none; border:1px solid var(--line-strong); color:var(--paper); width:38px; height:38px; border-radius:4px; font-size:18px; cursor:pointer;}
+
+  section{padding:96px 24px; max-width:var(--maxw); margin:0 auto;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--ndvi-mid); margin:0 0 18px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{content:""; width:22px; height:1px; background:var(--ndvi-mid); display:inline-block;}
+
+  h1,h2,h3{font-family:'Fraunces', serif; font-weight:500; margin:0;}
+  h1{font-size:clamp(2.6rem, 6vw, 4.6rem); line-height:1.02; letter-spacing:-.01em; font-weight:300;}
+  h2{font-size:clamp(1.9rem, 3.4vw, 2.6rem); line-height:1.1; margin-bottom:22px;}
+  p{color:var(--paper); margin:0 0 16px;}
+  .muted{color:var(--paper-dim);}
+
+  /* HERO */
+  .hero{
+    padding-top:110px; padding-bottom:70px;
+    display:grid; grid-template-columns: 1.3fr 0.9fr; gap:48px; align-items:end;
+  }
+  .hero-copy p.lede{font-size:1.15rem; color:var(--paper-dim); max-width:46ch; margin-top:22px;}
+  .coords{
+    font-family:'IBM Plex Mono', monospace; font-size:12.5px; color:var(--ndvi-low);
+    display:flex; gap:22px; flex-wrap:wrap; margin-top:28px;
+  }
+  .coords span{border:1px solid var(--line-strong); padding:6px 10px; border-radius:3px;}
+  .hero-meta{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--paper-dim);
+    border-left:1px solid var(--line-strong); padding-left:22px;
+  }
+  .hero-meta div{margin-bottom:10px;}
+  .hero-meta b{color:var(--paper); font-weight:500; display:block; font-family:'IBM Plex Sans',sans-serif; font-size:14px; margin-bottom:2px;}
+
+  /* NDVI legend bar — signature element */
+  .ndvi-legend{
+    margin:0 24px; max-width:var(--maxw); margin-left:auto; margin-right:auto;
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    padding:14px 0;
+  }
+  .legend-track{
+    height:10px; border-radius:2px;
+    background:linear-gradient(90deg, var(--ndvi-low), var(--ndvi-mid) 55%, var(--ndvi-high));
+  }
+  .legend-labels{
+    display:flex; justify-content:space-between; margin-top:8px;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--paper-dim);
+    letter-spacing:.04em;
+  }
+
+  /* IMAGE */
+  .figure{margin:36px 0 8px; border:1px solid var(--line); border-radius:2px; overflow:hidden;}
+  .figure img{display:block; width:100%; height:auto; filter:saturate(0.92) contrast(1.03);}
+  .figure figcaption{
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--paper-dim);
+    padding:10px 14px; border-top:1px solid var(--line); letter-spacing:.03em;
+  }
+
+  .grid-2{display:grid; grid-template-columns: 1fr 1fr; gap:56px;}
+
+  .rq-block{
+    border-left:2px solid var(--ndvi-mid); padding:6px 0 6px 22px; margin:26px 0;
+  }
+  .rq-block p{font-size:1.15rem; font-family:'Fraunces', serif; font-weight:300; color:var(--paper); line-height:1.5;}
+
+  .tag-list{list-style:none; margin:0; padding:0;}
+  .tag-list li{
+    padding:10px 0; border-bottom:1px solid var(--line);
+    color:var(--paper-dim); font-size:.98rem;
+  }
+  .tag-list li:last-child{border-bottom:none;}
+  .tag-list li b{color:var(--paper); font-weight:500;}
+
+  .method-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:1px; background:var(--line); border:1px solid var(--line); margin-top:8px;}
+  .method-cell{background:var(--ink); padding:26px;}
+  .method-cell .idx{font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ndvi-low); letter-spacing:.08em; margin-bottom:10px; display:block;}
+  .method-cell h3{font-size:1.05rem; font-weight:500; margin-bottom:8px; color:var(--paper);}
+  .method-cell p{font-size:.92rem; color:var(--paper-dim); margin:0;}
+
+  .tools-row{display:flex; flex-wrap:wrap; gap:10px; margin-top:20px;}
+  .tools-row span{
+    font-family:'IBM Plex Mono', monospace; font-size:12.5px;
+    border:1px solid var(--line-strong); padding:7px 12px; border-radius:20px; color:var(--paper-dim);
+  }
+
+  .team-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:28px; margin-top:12px;}
+  .team-card{border:1px solid var(--line); padding:26px 22px; border-radius:2px; transition:border-color .2s ease;}
+  .team-card:hover{border-color:var(--line-strong);}
+  .team-card .init{
+    font-family:'Fraunces', serif; font-size:1.6rem; font-weight:500; color:var(--ndvi-mid);
+    width:52px; height:52px; border:1px solid var(--line-strong); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; margin-bottom:16px;
+  }
+  .team-card h3{font-size:1.05rem; font-weight:500; margin-bottom:4px;}
+  .team-card p{font-size:.9rem; color:var(--paper-dim); margin:0;}
+
+  .sup-list{margin-top:36px; padding-top:28px; border-top:1px solid var(--line);}
+  .sup-list .eyebrow{margin-bottom:14px;}
+  .sup-list p{color:var(--paper-dim); font-size:.95rem;}
+
+  footer{
+    border-top:1px solid var(--line); padding:48px 24px 64px;
+  }
+  .footer-inner{max-width:var(--maxw); margin:0 auto; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:24px;}
+  .cta-link{
+    display:inline-flex; align-items:center; gap:10px;
+    font-family:'IBM Plex Mono', monospace; font-size:13px; letter-spacing:.05em;
+    color:var(--paper); text-decoration:none; border-bottom:1px solid var(--ndvi-mid); padding-bottom:3px;
+  }
+  .cta-link:hover{color:var(--ndvi-mid);}
+  .fine{font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--paper-dim);}
+
+  .fade-in{opacity:0; transform:translateY(14px); transition:opacity .6s ease, transform .6s ease;}
+  .fade-in.in-view{opacity:1; transform:translateY(0);}
+
+  @media (max-width: 820px){
+    .hero{grid-template-columns:1fr; gap:24px;}
+    .hero-meta{border-left:none; border-top:1px solid var(--line-strong); padding-left:0; padding-top:20px;}
+    .grid-2{grid-template-columns:1fr; gap:32px;}
+    .method-grid{grid-template-columns:1fr;}
+    .team-grid{grid-template-columns:1fr;}
+    nav.nav-links{
+      position:fixed; inset:57px 0 auto 0; background:var(--ink);
+      flex-direction:column; padding:20px 24px; border-bottom:1px solid var(--line);
+      transform:translateY(-120%); transition:transform .25s ease; gap:0;
+    }
+    nav.nav-links.open{transform:translateY(0);}
+    nav.nav-links a{padding:12px 0; border-bottom:1px solid var(--line);}
+    .nav-toggle{display:block;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    .fade-in{opacity:1; transform:none; transition:none;}
+    #ndvi-progress > div{transition:none;}
+  }
+</style>
+</head>
+<body>
+
+<div id="ndvi-progress"><div></div></div>
+
+<header class="site-nav">
+  <div class="nav-inner">
+    <div class="nav-mark"><b>Group 4</b> · INFOMSSML 2026</div>
+    <nav class="nav-links" id="navLinks">
+      <a href="#intro">Introduction</a>
+      <a href="#research">Research</a>
+      <a href="#methods">Data &amp; Methods</a>
+      <a href="#team">Team</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-copy">
+    <div class="eyebrow">NDVI change detection · 2013 – 2025</div>
+    <h1>Dutch Forest<br>Change Detection</h1>
+    <p class="lede">Tracking deforestation in Utrecht &amp; Gelderland through NDVI temporal profiles derived from Landsat imagery.</p>
+    <div class="coords">
+      <span>52.09°N, 5.12°E — Utrecht</span>
+      <span>52.05°N, 5.87°E — Gelderland</span>
+    </div>
+  </div>
+  <div class="hero-meta">
+    <div><b>Course</b> INFOMSSML — Spatial Statistics &amp; Machine Learning</div>
+    <div><b>Programme</b> MSc Applied Data Science, Utrecht University</div>
+    <div><b>Study window</b> 2013–2017 and 2017–2021</div>
+    <div><b>Group</b> Group 4</div>
+  </div>
+</section>
+
+<div class="ndvi-legend">
+  <div class="legend-track"></div>
+  <div class="legend-labels">
+    <span>NDVI −1 (bare / built-up)</span>
+    <span>2013</span>
+    <span>2017</span>
+    <span>2021</span>
+    <span>NDVI +1 (dense canopy)</span>
+  </div>
+</div>
+
+<section id="intro" class="fade-in">
+  <div class="eyebrow">Introduction</div>
+  <h2>A reversal four decades in the making</h2>
+  <div class="grid-2">
+    <div>
+      <p>In 1986, the Dutch government subsidised large-scale tree planting to address a national wood shortage. Since 2013, that trend has reversed — deforestation has consistently outpaced new planting, with forested land converted to heathland and other nature types.</p>
+      <p>This project investigates how and where these changes have occurred across <b>Utrecht</b> and <b>Gelderland</b>, two provinces with well-documented forest loss.</p>
+    </div>
+    <div>
+      <p class="muted">By analysing satellite-derived NDVI (Normalised Difference Vegetation Index) time series, we detect local variation in forest greenness and identify where change has accelerated or reversed across two windows: 2013–2017 and 2017–2021.</p>
+    </div>
+  </div>
+  <figure class="figure">
+    <img src="https://anthony-n-kamau.github.io/ssml/images/pic01.jpg" alt="Dutch forest landscape">
+    <figcaption>FIG. 01 — Forest cover, Utrecht &amp; Gelderland study area</figcaption>
+  </figure>
+</section>
+
+<section id="research" class="fade-in">
+  <div class="eyebrow">Research</div>
+  <h2>Research aim &amp; question</h2>
+  <p>Find local variation between forests using NDVI time series and perform change detection across the study area. We compare forest greenness trends across two time periods to determine whether deforestation rates have shifted in direction or magnitude.</p>
+
+  <div class="rq-block">
+    <p>To what extent do NDVI temporal profiles differ between forests within Utrecht and Gelderland, and did the rate or direction of change shift between the 2013–2017 and 2017–2021 periods?</p>
+  </div>
+
+  <ul class="tag-list">
+    <li><b>Output 1 —</b> Temporal NDVI profiles per forest zone across both provinces</li>
+    <li><b>Output 2 —</b> Maps of deforested areas broken down by time period</li>
+    <li><b>Output 3 —</b> Comparative analysis of NDVI change rates between the two study windows</li>
+    <li><b>Output 4 —</b> NDVI imagery visualising greenness trends over time</li>
+  </ul>
+
+  <figure class="figure">
+    <img src="https://anthony-n-kamau.github.io/ssml/images/pic02.jpg" alt="NDVI map visualisation">
+    <figcaption>FIG. 02 — NDVI greenness distribution across the study area</figcaption>
+  </figure>
+</section>
+
+<section id="methods" class="fade-in">
+  <div class="eyebrow">Data &amp; Methods</div>
+  <h2>Study area &amp; approach</h2>
+  <p>Forests in the Dutch provinces of Utrecht and Gelderland, covering the period 2013 to 2025. NDVI is derived from Landsat 7, 8, and 9 multispectral scenes sourced through Microsoft's Planetary Computer.</p>
+
+  <div class="method-grid">
+    <div class="method-cell">
+      <span class="idx">STEP 01</span>
+      <h3>NDVI computation</h3>
+      <p>Derived from near-infrared and red spectral bands across all Landsat scenes.</p>
+    </div>
+    <div class="method-cell">
+      <span class="idx">STEP 02</span>
+      <h3>Temporal profiling</h3>
+      <p>Greenness trends tracked across 2013–2017 and 2017–2021 windows.</p>
+    </div>
+    <div class="method-cell">
+      <span class="idx">STEP 03</span>
+      <h3>Change detection</h3>
+      <p>Identifying deforestation hotspots from shifts in NDVI signal over time.</p>
+    </div>
+    <div class="method-cell">
+      <span class="idx">STEP 04</span>
+      <h3>Spatial analysis</h3>
+      <p>Spatial statistics and machine learning applied to detect and explain local patterns.</p>
+    </div>
+  </div>
+
+  <div class="tools-row">
+    <span>Python — Planetary Computer API</span>
+    <span>rioxarray</span>
+    <span>geopandas</span>
+    <span>pystac</span>
+    <span>R — sf</span>
+    <span>tmap</span>
+    <span>spatialRF</span>
+    <span>QGIS</span>
+  </div>
+
+  <figure class="figure">
+    <img src="https://anthony-n-kamau.github.io/ssml/images/pic03.jpg" alt="Landsat satellite imagery">
+    <figcaption>FIG. 03 — Landsat multispectral scene, source imagery</figcaption>
+  </figure>
+</section>
+
+<section id="team" class="fade-in">
+  <div class="eyebrow">Team</div>
+  <h2>Group 4</h2>
+  <p class="muted">Three MSc Applied Data Science students at Utrecht University, collaborating on this INFOMSSML 2026 term project.</p>
+
+  <div class="team-grid">
+    <div class="team-card">
+      <div class="init">AK</div>
+      <h3>Anthony Kamau</h3>
+      <p>MSc Applied Data Science, Utrecht University</p>
+    </div>
+    <div class="team-card">
+      <div class="init">MZ</div>
+      <h3>Menno Zoetbrood</h3>
+      <p>MSc Applied Data Science, Utrecht University</p>
+    </div>
+    <div class="team-card">
+      <div class="init">CY</div>
+      <h3>Chaunce Yuen</h3>
+      <p>MSc Applied Data Science, Utrecht University</p>
+    </div>
+  </div>
+
+  <div class="sup-list">
+    <div class="eyebrow">Supervisors</div>
+    <p><b style="color:var(--paper)">Dr. SM Labib</b> — Course coordinator, Dept. of Human Geography &amp; Spatial Planning</p>
+    <p><b style="color:var(--paper)">Dr. Menno Straatsma</b> — Dept. of Physical Geography</p>
+  </div>
+</section>
+
+<footer id="contact">
+  <div class="footer-inner">
+    <div>
+      <div class="eyebrow">Contact</div>
+      <p style="max-width:40ch;">For questions about this project, reach out via GitHub or through Utrecht University. Code and scripts will be made available in the project repository once complete.</p>
+      <a class="cta-link" href="https://github.com/Anthony-N-Kamau" target="_blank" rel="noopener">View on GitHub →</a>
+    </div>
+    <div class="fine">© Group 4 — INFOMSSML 2026, Utrecht University</div>
+  </div>
+</footer>
+
+<script>
+  // NDVI scroll progress
+  const bar = document.querySelector('#ndvi-progress > div');
+  function updateProgress(){
+    const h = document.documentElement;
+    const scrolled = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
+    bar.style.width = scrolled + '%';
+  }
+  document.addEventListener('scroll', updateProgress);
+  updateProgress();
+
+  // mobile nav toggle
+  const toggle = document.getElementById('navToggle');
+  const links = document.getElementById('navLinks');
+  toggle.addEventListener('click', () => {
+    const open = links.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open);
+  });
+  links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+    links.classList.remove('open');
+    toggle.setAttribute('aria-expanded', false);
+  }));
+
+  // fade-in on scroll
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('in-view'); });
+  }, {threshold:0.12});
+  document.querySelectorAll('.fade-in').forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>
