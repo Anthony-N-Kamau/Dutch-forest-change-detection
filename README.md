@@ -2,7 +2,7 @@
 
 A GitHub Pages site presenting an INFOMSSML (Spatial Statistics & Machine Learning) term project tracking deforestation in the Dutch provinces of Utrecht and Gelderland using NDVI temporal profiles derived from Landsat imagery (2013–2025).
 
-**Live site:** [https://anthony-n-kamau.github.io/dutch-forest-change-detection/](https://anthony-n-kamau.github.io/dutch-forest-change-detection)
+**Live site:** [https://anthony-n-kamau.github.io/dutch-forest-change-detection/](https://anthony-n-kamau.github.io/Dutch-forest-change-detection)
 
 ## Project overview
 
