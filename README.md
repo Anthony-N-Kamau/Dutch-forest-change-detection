@@ -2,6 +2,8 @@
 
 Analysing NDVI (Normalized Difference Vegetation Index) time series from Sentinel-2 imagery to track annual forest condition changes across four Dutch forests between 2016 and 2025.
 
+Live site: https://anthony-n-kamau.github.io/Dutch-forest-change-detection/
+
 ## Overview
 
 National-level deforestation reports in the Netherlands are typically published at five-year intervals using topographic map overlays, aggregated at the provincial level. This obscures annual variation and differences between individual forests within the same province.
