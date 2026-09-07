@@ -95,7 +95,3 @@ pip install pandas numpy matplotlib xarray rioxarray stackstac dask[array] geopa
 - Annual median compositing can obscure short-lived intra-seasonal dynamics.
 - NDVI alone cannot fully distinguish drought stress from actual tree removal; canopy height models or complementary datasets would strengthen causal claims.
 - A Sentinel-2 L2A processing baseline change during the study period is a possible (unresolved) source of systematic bias.
-
-## License
-
-Add a license of your choice (e.g. MIT) if you intend this to be reused.
