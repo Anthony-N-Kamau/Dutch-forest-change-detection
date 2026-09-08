@@ -1,6 +1,6 @@
 # Detecting Deforestation in the Netherlands
 
-Analysing NDVI (Normalized Difference Vegetation Index) time series from Sentinel-2 imagery to track annual forest condition changes across four Dutch forests between 2016 and 2025.
+Analysing NDVI (Normalized Difference Vegetation Index) time series from Sentinel-2 imagery to track annual forest condition changes across four Dutch forests between 2016 and 2025..
 
 Live site: https://anthony-n-kamau.github.io/Dutch-forest-change-detection/
 
